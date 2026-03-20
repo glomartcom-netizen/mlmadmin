@@ -1,1 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>DimeX Final Admin</title>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{font-family:sans-serif;margin:0;display:flex;background:#f4f7f6}
+.sidebar{width:240px;background:#111;color:#fff;padding:20px;height:100vh}
+.sidebar div{padding:12px;cursor:pointer;border-radius:5px}
+.sidebar div:hover{background:#333}
+.main{flex:1;padding:20px}
+.section{display:none;background:#fff;padding:20px;border-radius:10px}
+.active{display:block}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid #eee}
+th{background:#222;color:#fff}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+<div onclick="show('members')">👥 Members</div>
+<div onclick="show('deposit')">📅 Daily Deposits</div>
+<div onclick="show('payout')">💸 Daily Payout</div>
+<div onclick="show('fourx')">🔥 4X Users</div>
+<div onclick="show('unlock')">🔓 Unlock Users</div>
+<div onclick="show('growth')">📈 Growth</div>
+<div onclick="show('withdraw')">🏧 Withdraw</div>
+<div onclick="show('fund')">💰 Add Fund</div>
+<div onclick="show('convert')">🔁 Wallet→Deposit</div>
+</div>
+
+<div class="main">
+
+<div id="members" class="section active">
+<h3>Members</h3>
+<table id="memberTable"></table>
+</div>
+
+<div id="deposit" class="section">
+<h3>Daily Deposits</h3>
+<table id="depositTable"></table>
+</div>
+
+<div id="payout" class="section">
+<h3>Daily Payout</h3>
+<input type="date" id="payoutDate">
+<button onclick="loadPayout()">Load</button>
+<table id="payoutTable"></table>
+</div>
+
+<div id="fourx" class="section">
+<h3>4X Users</h3>
+<table id="fourxTable"></table>
+</div>
+
+<div id="unlock" class="section">
+<h3>Unlock Users</h3>
+<table id="unlockTable"></table>
+</div>
+
+<div id="growth" class="section">
+<h3>Growth</h3>
+<canvas id="growthChart"></canvas>
+</div>
+
+<div id="withdraw" class="section">
+<h3>Withdraw</h3>
+<table id="withdrawTable"></table>
+</div>
+
+<div id="fund" class="section">
+<input id="mid" placeholder="Member ID">
+<input id="amt" placeholder="Amount">
+<button onclick="addFund()">Add</button>
+</div>
+
+<div id="convert" class="section">
+<input id="c_mid" placeholder="Member ID">
+<input id="c_amt" placeholder="Amount">
+<button onclick="convertWallet()">Convert</button>
+</div>
+
+</div>
+
+<script>
+const API="http://localhost:3000";
+let current="members";
+
+// 🔥 ADD THIS HERE
+function money(x){
+    return "₹" + Number(x || 0).toLocaleString('en-IN');
+}
+
+function show(id){
+current=id;
+document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+refresh();
+}
+
+function refresh(){
+if(current==="members") loadMembers();
+if(current==="deposit") loadDeposits();
+if(current==="payout") loadPayout();
+if(current==="fourx") load4x();
+if(current==="unlock") loadUnlock();
+if(current==="growth") loadGrowth();
+if(current==="withdraw") loadWithdraw();
+}
+
+setInterval(refresh,20000);
+
+// MEMBERS
+async function loadMembers(){
+const data=await fetch(API+"/api/admin/members").then(r=>r.json());
+
+let html=`<tr>
+<th>Date</th>
+<th>ID</th>
+<th>Name</th>
+<th>Password</th>
+<th>Mobile</th>
+<th>Email</th>
+<th>Sponsor ID</th>
+<th>Sponsor Name</th>
+<th>Deposit</th>
+<th>Total Income</th>
+<th>4X</th>
+<th>Unlock</th>
+</tr>`;
+
+data.forEach(u=>{
+html+=`<tr style="${u.is_4x?'background:#ffcccc':''}">
+<td>${new Date(u.join_date).toLocaleDateString()}</td>
+<td>${u.member_id}</td>
+<td>${u.full_name}</td>
+<td>${u.password}</td>
+<td>${u.mobile||''}</td>
+<td>${u.email||''}</td>
+<td>${u.sponsor_id||''}</td>
+<td>${u.sponsor_name||''}</td>
+<td>${u.total_deposit}</td>
+<td>${u.total_income}</td>
+<td>${u.is_4x?'DONE':'RUNNING'}</td>
+<td>${u.is_unlocked?'YES':'NO'}</td>
+</tr>`;
+});
+
+memberTable.innerHTML=html;
+}
+
+// DEPOSITS
+async function loadDeposits(){
+const data=await fetch(API+"/api/admin/daily-deposits").then(r=>r.json());
+
+let html=`<tr>
+<th>Date</th><th>ID</th><th>Name</th>
+<th>Mobile</th><th>Email</th><th>Sponsor</th>
+<th>Amount</th><th>Type</th>
+</tr>`;
+
+data.forEach(d=>{
+html+=`<tr>
+<td>${new Date(d.created_at).toLocaleString()}</td>
+<td>${d.member_id}</td>
+<td>${d.full_name}</td>
+<td>${d.mobile||''}</td>
+<td>${d.email||''}</td>
+<td>${d.sponsor_id||''}</td>
+<td>${d.amount}</td>
+<td>${d.deposit_type}</td>
+</tr>`;
+});
+
+depositTable.innerHTML=html;
+}
+
+// PAYOUT
+async function loadPayout(){
+const date=document.getElementById("payoutDate").value;
+const url=date?API+"/api/admin/daily-payout?date="+date:API+"/api/admin/daily-payout";
+
+const data=await fetch(url).then(r=>r.json());
+
+let html=`<tr>
+<th>ID</th><th>Name</th><th>Mobile</th>
+<th>Total</th><th>Today</th>
+<th>ROI</th><th>Direct</th><th>Level</th>
+<th>Remaining</th><th>4X</th><th>Unlock</th>
+</tr>`;
+
+data.forEach(u=>{
+html+=`<tr style="${u.is_4x?'background:#ffcccc':''}">
+<td>${u.member_id}</td>
+<td>${u.full_name}</td>
+<td>${u.mobile||''}</td>
+<td>${u.total_income}</td>
+<td>${u.today_income}</td>
+<td>${u.roi}</td>
+<td>${u.direct}</td>
+<td>${u.level}</td>
+<td>${u.remaining}</td>
+<td>${u.is_4x?'DONE':'RUNNING'}</td>
+<td>${u.is_unlocked?'YES':'NO'}</td>
+</tr>`;
+});
+
+payoutTable.innerHTML=html;
+}
+
+// 4X
+async function load4x(){
+const data=await fetch(API+"/api/admin/4x-status").then(r=>r.json());
+
+let html=`<tr>
+<th>ID</th><th>Deposit</th><th>Total</th><th>Remaining</th><th>Status</th>
+</tr>`;
+
+data.forEach(u=>{
+html+=`<tr style="${u.is_4x?'background:#ffcccc':''}">
+<td>${u.member_id}</td>
+<td>${u.total_deposit}</td>
+<td>${u.total_income}</td>
+<td>${u.remaining}</td>
+<td>${u.is_4x?'DONE':'RUNNING'}</td>
+</tr>`;
+});
+
+fourxTable.innerHTML=html;
+}
+
+// UNLOCK
+async function loadUnlock(){
+const data=await fetch(API+"/api/admin/unlocked-users").then(r=>r.json());
+
+let html=`<tr><th>ID</th><th>Name</th><th>Volume</th></tr>`;
+
+data.forEach(u=>{
+html+=`<tr>
+<td>${u.member_id}</td>
+<td>${u.full_name}</td>
+<td>${u.direct_volume}</td>
+</tr>`;
+});
+
+unlockTable.innerHTML=html;
+}
+
+// GROWTH
+async function loadGrowth(){
+const data=await fetch(API+"/api/admin/growth").then(r=>r.json());
+
+let labels=[],users=[],deposit=[];
+data.reverse().forEach(d=>{
+labels.push(d.date);
+users.push(d.users);
+deposit.push(d.deposit);
+});
+
+if(window.chart) window.chart.destroy();
+
+window.chart = new Chart(document.getElementById("growthChart"),{
+type:'line',
+data:{labels:labels,datasets:[
+{label:'Users',data:users},
+{label:'Deposit',data:deposit}
+]}
+});
+}
+
+// WITHDRAW
+async function loadWithdraw(){
+const data=await fetch(API+"/api/admin/withdrawals").then(r=>r.json());
+
+let html="<tr><th>ID</th><th>Amount</th><th>Status</th></tr>";
+
+data.forEach(w=>{
+html+=`<tr>
+<td>${w.member_id}</td>
+<td>${w.amount}</td>
+<td>${w.status}</td>
+</tr>`;
+});
+
+withdrawTable.innerHTML=html;
+}
+
+// FUND
+async function addFund(){
+await fetch(API+"/api/admin/add-fund",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({member_id:mid.value,amount:amt.value})
+});
+alert("Added");
+}
+
+// CONVERT
+async function convertWallet(){
+await fetch(API+"/api/admin/wallet-to-deposit",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({member_id:c_mid.value,amount:c_amt.value})
+});
+alert("Converted");
+}
+
+</script>
+
+</body>
+</html>
