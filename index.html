@@ -85,6 +85,21 @@ th{background:#222;color:#fff}
 <button onclick="convertWallet()">Convert</button>
 </div>
 
+<div>
+  <h2>Withdraw Requests</h2>
+  <table border="1" id="withdrawTable">
+    <thead>
+      <tr>
+        <th>Member</th>
+        <th>Amount</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>    
+
 </div>
 
 <script>
@@ -274,21 +289,41 @@ data:{labels:labels,datasets:[
 }
 
 // WITHDRAW
-async function loadWithdraw(){
-const data=await fetch(API+"/api/admin/withdrawals").then(r=>r.json());
+async function loadWithdrawals() {
+  const res = await fetch("http://localhost:3000/api/admin/withdrawals");
+  const data = await res.json();
 
-let html="<tr><th>ID</th><th>Amount</th><th>Status</th></tr>";
+  const tbody = document.querySelector("#withdrawTable tbody");
+  tbody.innerHTML = "";
 
-data.forEach(w=>{
-html+=`<tr>
-<td>${w.member_id}</td>
-<td>${w.amount}</td>
-<td>${w.status}</td>
-</tr>`;
-});
-
-withdrawTable.innerHTML=html;
+  data.forEach(w => {
+    const row = `
+      <tr>
+        <td>${w.member_id}</td>
+        <td>₹${w.amount}</td>
+        <td>${w.status}</td>
+        <td>
+          ${w.status === 'PENDING'
+            ? `<button onclick="approve(${w.id})">Approve</button>`
+            : 'Done'}
+        </td>
+      </tr>
+    `;
+    tbody.innerHTML += row;
+  });
 }
+
+async function approve(id) {
+  await fetch("http://localhost:3000/api/admin/withdraw-paid", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ id })
+  });
+
+  loadWithdrawals();
+}
+
+loadWithdrawals();
 
 // FUND
 async function addFund(){
