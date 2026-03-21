@@ -384,64 +384,71 @@ async function loadStats(){
 
 async function loadMembers(){
 
-const data = await fetch(API + "/api/admin/members").then(r=>r.json());
+  let data = [];
 
-let html = `
-<tr>
-<th>Date</th>
-<th>ID</th>
-<th>Name</th>
-<th>Password</th>
-<th>Mobile</th>
-<th>Email</th>
-<th>Sponsor ID</th>
-<th>Sponsor Name</th>
-<th>Deposit</th>
-<th>Total Income</th>
-<th>4X</th>
-<th>Unlock</th>
-</tr>
-`;
+  try{
 
-data.forEach(u=>{
+    const res = await fetch(API + "/api/admin/members");
+    data = await res.json();
 
-html += `
-<tr style="${u.is_4x ? 'background:#ffcccc' : ''}">
+  }catch(e){
+    console.log("API Error", e);
+    return;
+  }
 
-<td>${u.join_date ? new Date(u.join_date).toLocaleDateString() : ''}</td>
+  let html = `
+  <tr>
+  <th>Date</th>
+  <th>ID</th>
+  <th>Name</th>
+  <th>Password</th>
+  <th>Mobile</th>
+  <th>Email</th>
+  <th>Sponsor ID</th>
+  <th>Sponsor Name</th>
+  <th>Deposit</th>
+  <th>Total Income</th>
+  <th>4X</th>
+  <th>Unlock</th>
+  </tr>
+  `;
 
-<td>${u.member_id}</td>
+  data.forEach(u=>{
 
-<td>${u.full_name}</td>
+    html += `
+    <tr style="${u.is_4x ? 'background:#ffcccc' : ''}">
 
-<!-- 🔒 HIDDEN PASSWORD -->
-<td>******</td>
+    <td>${u.join_date ? new Date(u.join_date).toLocaleDateString() : ''}</td>
 
-<td>${u.mobile || ''}</td>
+    <td>${u.member_id}</td>
 
-<td>${u.email || ''}</td>
+    <td>${u.full_name}</td>
 
-<td>${u.sponsor_id || ''}</td>
+    <td>******</td>
 
-<td>${u.sponsor_name || ''}</td>
+    <td>${u.mobile || ''}</td>
 
-<!-- 💰 MONEY FORMAT -->
-<td>${money(u.total_deposit)}</td>
+    <td>${u.email || ''}</td>
 
-<td>${money(u.total_income)}</td>
+    <td>${u.sponsor_id || ''}</td>
 
-<td>${u.is_4x ? '✅ DONE' : '⏳ RUNNING'}</td>
+    <td>${u.sponsor_name || ''}</td>
 
-<td style="${u.is_unlocked ? 'background:#ccffcc' : ''}">
-${u.is_unlocked ? '🔓 YES' : '🔒 NO'}
-</td>
+    <td>${money(u.total_deposit)}</td>
 
-</tr>
-`;
+    <td>${money(u.total_income)}</td>
 
-});
+    <td>${u.is_4x ? '✅ DONE' : '⏳ RUNNING'}</td>
 
-document.getElementById("memberTable").innerHTML = html;
+    <td style="${u.is_unlocked ? 'background:#ccffcc' : ''}">
+    ${u.is_unlocked ? '🔓 YES' : '🔒 NO'}
+    </td>
+
+    </tr>
+    `;
+  });
+
+  document.getElementById("memberTable").innerHTML = html;
 }
 
 function filterDeposits(){
@@ -666,69 +673,92 @@ html += `
 document.getElementById("unlockTable").innerHTML = html;
 }
   
-// GROWTH
 async function loadGrowth(){
 
-const data = await fetch(API + "/api/admin/growth").then(r=>r.json());
+  let data = [];
 
-// ✅ EMPTY SAFE
-if(!data || data.length === 0){
-  document.getElementById("growthChart").innerHTML = "No Data";
-  return;
-}
+  try{
+    const res = await fetch(API + "/api/admin/growth");
+    data = await res.json();
+  }catch(e){
+    console.log("Growth API Error", e);
+    return;
+  }
 
-let labels = [], users = [], deposit = [];
+  const canvas = document.getElementById("growthChart");
 
-data.reverse().forEach(d=>{
-  labels.push(d.date);
-  users.push(d.users || 0);
-  deposit.push(d.deposit || 0);
-});
+  // ✅ EMPTY SAFE
+  if(!data || data.length === 0){
 
-// 🔥 destroy old chart
-if(window.chart) window.chart.destroy();
+    if(window.chart) window.chart.destroy();
 
-window.chart = new Chart(document.getElementById("growthChart"),{
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "16px sans-serif";
+    ctx.fillText("No Data", 20, 50);
 
-  type: 'line',
+    return;
+  }
 
-  data: {
-    labels: labels,
-    datasets: [
-      {
-        label: 'Users',
-        data: users,
-        tension: 0.3
-      },
-      {
-        label: 'Deposit',
-        data: deposit,
-        tension: 0.3
-      }
-    ]
-  },
+  let labels = [], users = [], deposit = [];
 
-  options: {
+  data.reverse().forEach(d=>{
+    labels.push(d.date);
+    users.push(d.users || 0);
+    deposit.push(d.deposit || 0);
+  });
 
-    responsive: true,
+  // 🔥 destroy old chart
+  if(window.chart) window.chart.destroy();
 
-    plugins: {
-      tooltip: {
-        callbacks: {
-          label: function(ctx){
-            if(ctx.dataset.label === 'Deposit'){
-              return "₹" + Number(ctx.raw).toLocaleString("en-IN");
-            }
-            return ctx.raw;
-          }
+  window.chart = new Chart(canvas,{
+
+    type: 'line',
+
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Users',
+          data: users,
+          tension: 0.3
+        },
+        {
+          label: 'Deposit',
+          data: deposit,
+          tension: 0.3
         }
-      }
+      ]
     },
 
-    scales: {
-      x: {
-        title: {
-          display: true,
+    options: {
+      responsive: true,
+
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(ctx){
+              if(ctx.dataset.label === 'Deposit'){
+                return "₹" + Number(ctx.raw).toLocaleString("en-IN");
+              }
+              return ctx.raw;
+            }
+          }
+        }
+      },
+
+      scales: {
+        x: {
+          title: { display: true, text: 'Date' }
+        },
+        y: {
+          title: { display: true, text: 'Value' }
+        }
+      }
+    }
+
+  });
+}
           text: 'Date'
         }
       },
@@ -942,22 +972,35 @@ if(localStorage.getItem("theme")==="dark"){
 
 function exportTable(){
 
-  let table = document.querySelector("table").outerHTML;
+  const activeSection = document.querySelector(".section.active");
+  const table = activeSection.querySelector("table");
 
-  let blob = new Blob([table], { type: "application/vnd.ms-excel" });
+  if(!table){
+    alert("No table to export");
+    return;
+  }
+
+  let blob = new Blob([table.outerHTML], {
+    type: "application/vnd.ms-excel"
+  });
 
   let link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "report.xls";
+  link.download = current + ".xls";
   link.click();
-}   
+}
 
-let lastDeposit = 0;
+let lastDeposit = null;
 
 async function checkNotifications(){
 
   const res = await fetch(API + "/api/admin/daily-deposits");
   const data = await res.json();
+
+  if(lastDeposit === null){
+    lastDeposit = data.length;
+    return;
+  }
 
   if(data.length > lastDeposit){
 
