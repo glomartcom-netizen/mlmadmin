@@ -898,7 +898,7 @@ async function checkNotifications(){
 
     if(data.length>lastDeposit){
       const latest=data[0];
-      showToast(`🔔 New ₹${latest.amount}`);
+      showToast(`🔔 New Deposit ₹${latest.amount} (${latest.member_id})`);
       lastDeposit=data.length;
     }
 
