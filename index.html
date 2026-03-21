@@ -38,11 +38,18 @@ th{background:#222;color:#fff}
 
 <div id="members" class="section active">
 <h3>Members</h3>
+
+<!-- ✅ ADD HERE -->
+<input id="search" placeholder="Search Member..." onkeyup="filterMembers()" style="margin-bottom:10px;padding:8px;width:250px">
+
 <table id="memberTable"></table>
 </div>
 
 <div id="deposit" class="section">
 <h3>Daily Deposits</h3>
+
+<input id="depositSearch" placeholder="Search Deposit..." onkeyup="filterDeposits()">
+
 <table id="depositTable"></table>
 </div>
 
@@ -68,9 +75,22 @@ th{background:#222;color:#fff}
 <canvas id="growthChart"></canvas>
 </div>
 
+<!-- ✅ FIXED WITHDRAW SECTION -->
 <div id="withdraw" class="section">
-<h3>Withdraw</h3>
-<table id="withdrawTable"></table>
+<h3>Withdraw Requests</h3>
+
+<table border="1" id="withdrawTable">
+<thead>
+<tr>
+<th>Member</th>
+<th>Amount</th>
+<th>Status</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
 </div>
 
 <div id="fund" class="section">
@@ -85,56 +105,64 @@ th{background:#222;color:#fff}
 <button onclick="convertWallet()">Convert</button>
 </div>
 
-<div>
-  <h2>Withdraw Requests</h2>
-  <table border="1" id="withdrawTable">
-    <thead>
-      <tr>
-        <th>Member</th>
-        <th>Amount</th>
-        <th>Status</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>    
-
 </div>
-
 <script>
 const API="http://localhost:3000";
 let current="members";
 
-// 🔥 ADD THIS HERE
+// 🔥 MONEY FORMAT
 function money(x){
     return "₹" + Number(x || 0).toLocaleString('en-IN');
 }
 
+// ================= NAVIGATION =================
 function show(id){
-current=id;
-document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-document.getElementById(id).classList.add('active');
-refresh();
+  current = id;
+
+  document.querySelectorAll('.section').forEach(s=>{
+    s.classList.remove('active');
+  });
+
+  document.getElementById(id).classList.add('active');
+
+  refresh();
 }
 
+// ================= AUTO REFRESH =================
 function refresh(){
-if(current==="members") loadMembers();
-if(current==="deposit") loadDeposits();
-if(current==="payout") loadPayout();
-if(current==="fourx") load4x();
-if(current==="unlock") loadUnlock();
-if(current==="growth") loadGrowth();
-if(current==="withdraw") loadWithdraw();
+
+  if(current==="members") loadMembers();
+  if(current==="deposit") loadDeposits();
+  if(current==="payout") loadPayout();
+  if(current==="fourx") load4x();
+  if(current==="unlock") loadUnlock();
+  if(current==="growth") loadGrowth();
+
+  // ✅ FIXED LINE
+  if(current==="withdraw") loadWithdrawals();
 }
 
+// 🔄 AUTO REFRESH EVERY 20s
 setInterval(refresh,20000);
 
-// MEMBERS
-async function loadMembers(){
-const data=await fetch(API+"/api/admin/members").then(r=>r.json());
+// ✅ ADD FILTER FUNCTION HERE
+function filterMembers(){
+  const input = document.getElementById("search").value.toLowerCase();
+  const rows = document.querySelectorAll("#memberTable tr");
 
-let html=`<tr>
+  rows.forEach((row, index)=>{
+    if(index === 0) return;
+    const text = row.innerText.toLowerCase();
+    row.style.display = text.includes(input) ? "" : "none";
+  });
+}
+
+async function loadMembers(){
+
+const data = await fetch(API + "/api/admin/members").then(r=>r.json());
+
+let html = `
+<tr>
 <th>Date</th>
 <th>ID</th>
 <th>Name</th>
@@ -147,200 +175,517 @@ let html=`<tr>
 <th>Total Income</th>
 <th>4X</th>
 <th>Unlock</th>
-</tr>`;
+</tr>
+`;
 
 data.forEach(u=>{
-html+=`<tr style="${u.is_4x?'background:#ffcccc':''}">
-<td>${new Date(u.join_date).toLocaleDateString()}</td>
+
+html += `
+<tr style="${u.is_4x ? 'background:#ffcccc' : ''}">
+
+<td>${u.join_date ? new Date(u.join_date).toLocaleDateString() : ''}</td>
+
 <td>${u.member_id}</td>
+
 <td>${u.full_name}</td>
-<td>${u.password}</td>
-<td>${u.mobile||''}</td>
-<td>${u.email||''}</td>
-<td>${u.sponsor_id||''}</td>
-<td>${u.sponsor_name||''}</td>
-<td>${u.total_deposit}</td>
-<td>${u.total_income}</td>
-<td>${u.is_4x?'DONE':'RUNNING'}</td>
-<td>${u.is_unlocked?'YES':'NO'}</td>
-</tr>`;
+
+<!-- 🔒 HIDDEN PASSWORD -->
+<td>******</td>
+
+<td>${u.mobile || ''}</td>
+
+<td>${u.email || ''}</td>
+
+<td>${u.sponsor_id || ''}</td>
+
+<td>${u.sponsor_name || ''}</td>
+
+<!-- 💰 MONEY FORMAT -->
+<td>${money(u.total_deposit)}</td>
+
+<td>${money(u.total_income)}</td>
+
+<td>${u.is_4x ? '✅ DONE' : '⏳ RUNNING'}</td>
+
+<td style="${u.is_unlocked ? 'background:#ccffcc' : ''}">
+${u.is_unlocked ? '🔓 YES' : '🔒 NO'}
+</td>
+
+</tr>
+`;
+
 });
 
-memberTable.innerHTML=html;
+document.getElementById("memberTable").innerHTML = html;
 }
 
-// DEPOSITS
-async function loadDeposits(){
-const data=await fetch(API+"/api/admin/daily-deposits").then(r=>r.json());
+function filterDeposits(){
+  const val = document.getElementById("depositSearch").value.toLowerCase();
+  const rows = document.querySelectorAll("#depositTable tr");
 
-let html=`<tr>
-<th>Date</th><th>ID</th><th>Name</th>
-<th>Mobile</th><th>Email</th><th>Sponsor</th>
-<th>Amount</th><th>Type</th>
-</tr>`;
+  rows.forEach((r,i)=>{
+    if(i===0) return;
+    r.style.display = r.innerText.toLowerCase().includes(val) ? "" : "none";
+  });
+}
+      
+async function loadDeposits(){
+
+const data = await fetch(API + "/api/admin/daily-deposits").then(r=>r.json());
+
+let html = `
+<tr>
+<th>Date</th>
+<th>ID</th>
+<th>Name</th>
+<th>Mobile</th>
+<th>Email</th>
+<th>Sponsor</th>
+<th>Amount</th>
+<th>Type</th>
+</tr>
+`;
 
 data.forEach(d=>{
-html+=`<tr>
-<td>${new Date(d.created_at).toLocaleString()}</td>
+
+html += `
+<tr>
+
+<td>${d.created_at ? new Date(d.created_at).toLocaleString() : ''}</td>
+
 <td>${d.member_id}</td>
+
 <td>${d.full_name}</td>
-<td>${d.mobile||''}</td>
-<td>${d.email||''}</td>
-<td>${d.sponsor_id||''}</td>
-<td>${d.amount}</td>
-<td>${d.deposit_type}</td>
-</tr>`;
+
+<td>${d.mobile || ''}</td>
+
+<td>${d.email || ''}</td>
+
+<td>${d.sponsor_id || ''}</td>
+
+<!-- 💰 MONEY FORMAT -->
+<td style="color:green;font-weight:bold">${money(d.amount)}</td>
+
+<td>${d.deposit_type || ''}</td>
+
+</tr>
+`;
+
 });
 
-depositTable.innerHTML=html;
+document.getElementById("depositTable").innerHTML = html;
 }
 
-// PAYOUT
 async function loadPayout(){
-const date=document.getElementById("payoutDate").value;
-const url=date?API+"/api/admin/daily-payout?date="+date:API+"/api/admin/daily-payout";
 
-const data=await fetch(url).then(r=>r.json());
+const date = document.getElementById("payoutDate").value;
 
-let html=`<tr>
-<th>ID</th><th>Name</th><th>Mobile</th>
-<th>Total</th><th>Today</th>
-<th>ROI</th><th>Direct</th><th>Level</th>
-<th>Remaining</th><th>4X</th><th>Unlock</th>
-</tr>`;
+const url = date 
+  ? API + "/api/admin/daily-payout?date=" + date 
+  : API + "/api/admin/daily-payout";
+
+const data = await fetch(url).then(r=>r.json());
+
+let html = `
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Mobile</th>
+<th>Total</th>
+<th>Today</th>
+<th>ROI</th>
+<th>Direct</th>
+<th>Level</th>
+<th>Remaining</th>
+<th>4X</th>
+<th>Unlock</th>
+</tr>
+`;
 
 data.forEach(u=>{
-html+=`<tr style="${u.is_4x?'background:#ffcccc':''}">
+
+// ✅ SAFE VALUES
+const total = u.total_income || 0;
+const today = u.today_income || 0;
+const roi = u.roi || 0;
+const direct = u.direct || 0;
+const level = u.level || 0;
+const remaining = u.remaining > 0 ? u.remaining : 0;
+
+html += `
+<tr style="${u.is_4x ? 'background:#ffcccc' : ''}">
+
 <td>${u.member_id}</td>
+
 <td>${u.full_name}</td>
-<td>${u.mobile||''}</td>
-<td>${u.total_income}</td>
-<td>${u.today_income}</td>
-<td>${u.roi}</td>
-<td>${u.direct}</td>
-<td>${u.level}</td>
-<td>${u.remaining}</td>
-<td>${u.is_4x?'DONE':'RUNNING'}</td>
-<td>${u.is_unlocked?'YES':'NO'}</td>
-</tr>`;
+
+<td>${u.mobile || ''}</td>
+
+<!-- 💰 TOTAL -->
+<td><b>${money(total)}</b></td>
+
+<!-- 🟢 TODAY -->
+<td style="color:green"><b>${money(today)}</b></td>
+
+<!-- 🎯 ROI -->
+<td style="color:green">${money(roi)}</td>
+
+<!-- 🔥 DIRECT -->
+<td style="color:orange">${money(direct)}</td>
+
+<!-- 🔵 LEVEL -->
+<td style="color:blue">${money(level)}</td>
+
+<!-- ⚠️ REMAINING -->
+<td style="color:red">${money(remaining)}</td>
+
+<!-- 4X -->
+<td>${u.is_4x ? '✅ DONE' : '⏳ RUNNING'}</td>
+
+<!-- 🔓 UNLOCK -->
+<td style="${u.is_unlocked ? 'background:#ccffcc' : ''}">
+${u.is_unlocked ? '🔓 YES' : '🔒 NO'}
+</td>
+
+</tr>
+`;
+
 });
 
-payoutTable.innerHTML=html;
+document.getElementById("payoutTable").innerHTML = html;
 }
 
-// 4X
 async function load4x(){
-const data=await fetch(API+"/api/admin/4x-status").then(r=>r.json());
 
-let html=`<tr>
-<th>ID</th><th>Deposit</th><th>Total</th><th>Remaining</th><th>Status</th>
-</tr>`;
+const data = await fetch(API + "/api/admin/4x-status").then(r=>r.json());
+
+let html = `
+<tr>
+<th>ID</th>
+<th>Deposit</th>
+<th>Total</th>
+<th>Remaining</th>
+<th>Status</th>
+</tr>
+`;
 
 data.forEach(u=>{
-html+=`<tr style="${u.is_4x?'background:#ffcccc':''}">
+
+const deposit = u.total_deposit || 0;
+const total = u.total_income || 0;
+const remaining = u.remaining > 0 ? u.remaining : 0;
+
+html += `
+<tr style="${u.is_4x ? 'background:#ffcccc' : ''}">
+
 <td>${u.member_id}</td>
-<td>${u.total_deposit}</td>
-<td>${u.total_income}</td>
-<td>${u.remaining}</td>
-<td>${u.is_4x?'DONE':'RUNNING'}</td>
-</tr>`;
+
+<!-- 💰 Deposit -->
+<td>${money(deposit)}</td>
+
+<!-- 💰 Total -->
+<td><b>${money(total)}</b></td>
+
+<!-- ⚠️ Remaining -->
+<td style="color:red">${money(remaining)}</td>
+
+<!-- STATUS -->
+<td>
+${u.is_4x 
+  ? '<span style="color:green;font-weight:bold">✅ DONE</span>' 
+  : '<span style="color:orange">⏳ RUNNING</span>'
+}
+</td>
+
+</tr>
+`;
 });
 
-fourxTable.innerHTML=html;
+document.getElementById("fourxTable").innerHTML = html;
 }
 
-// UNLOCK
 async function loadUnlock(){
-const data=await fetch(API+"/api/admin/unlocked-users").then(r=>r.json());
 
-let html=`<tr><th>ID</th><th>Name</th><th>Volume</th></tr>`;
+const data = await fetch(API + "/api/admin/unlocked-users").then(r=>r.json());
+
+let html = `
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Volume</th>
+<th>Status</th>
+</tr>
+`;
 
 data.forEach(u=>{
-html+=`<tr>
+
+const vol = u.direct_volume || 0;
+
+html += `
+<tr style="background:#ccffcc">
+
 <td>${u.member_id}</td>
+
 <td>${u.full_name}</td>
-<td>${u.direct_volume}</td>
-</tr>`;
+
+<!-- 💰 Volume -->
+<td style="color:green;font-weight:bold">${money(vol)}</td>
+
+<!-- 🔓 STATUS -->
+<td>🔓 UNLOCKED</td>
+
+</tr>
+`;
 });
 
-unlockTable.innerHTML=html;
+document.getElementById("unlockTable").innerHTML = html;
 }
-
+  
 // GROWTH
 async function loadGrowth(){
-const data=await fetch(API+"/api/admin/growth").then(r=>r.json());
 
-let labels=[],users=[],deposit=[];
+const data = await fetch(API + "/api/admin/growth").then(r=>r.json());
+
+// ✅ EMPTY SAFE
+if(!data || data.length === 0){
+  document.getElementById("growthChart").innerHTML = "No Data";
+  return;
+}
+
+let labels = [], users = [], deposit = [];
+
 data.reverse().forEach(d=>{
-labels.push(d.date);
-users.push(d.users);
-deposit.push(d.deposit);
+  labels.push(d.date);
+  users.push(d.users || 0);
+  deposit.push(d.deposit || 0);
 });
 
+// 🔥 destroy old chart
 if(window.chart) window.chart.destroy();
 
 window.chart = new Chart(document.getElementById("growthChart"),{
-type:'line',
-data:{labels:labels,datasets:[
-{label:'Users',data:users},
-{label:'Deposit',data:deposit}
-]}
+
+  type: 'line',
+
+  data: {
+    labels: labels,
+    datasets: [
+      {
+        label: 'Users',
+        data: users,
+        tension: 0.3
+      },
+      {
+        label: 'Deposit',
+        data: deposit,
+        tension: 0.3
+      }
+    ]
+  },
+
+  options: {
+
+    responsive: true,
+
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: function(ctx){
+            if(ctx.dataset.label === 'Deposit'){
+              return "₹" + Number(ctx.raw).toLocaleString("en-IN");
+            }
+            return ctx.raw;
+          }
+        }
+      }
+    },
+
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'Date'
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: 'Value'
+        }
+      }
+    }
+
+  }
+
 });
 }
 
-// WITHDRAW
-async function loadWithdrawals() {
-  const res = await fetch("http://localhost:3000/api/admin/withdrawals");
+async function loadWithdrawals(){
+
+  const res = await fetch(API + "/api/admin/withdrawals");
   const data = await res.json();
 
   const tbody = document.querySelector("#withdrawTable tbody");
   tbody.innerHTML = "";
 
-  data.forEach(w => {
+  // ✅ EMPTY CHECK
+  if(!data || data.length === 0){
+    tbody.innerHTML = `<tr><td colspan="4">No Withdraw Requests</td></tr>`;
+    return;
+  }
+
+  data.forEach(w=>{
+
+    const statusColor =
+      w.status === "PENDING" ? "orange" :
+      w.status === "PAID" ? "green" : "gray";
+
     const row = `
       <tr>
+
         <td>${w.member_id}</td>
-        <td>₹${w.amount}</td>
-        <td>${w.status}</td>
-        <td>
-          ${w.status === 'PENDING'
-            ? `<button onclick="approve(${w.id})">Approve</button>`
-            : 'Done'}
+
+        <!-- 💰 MONEY FORMAT -->
+        <td><b>${money(w.amount)}</b></td>
+
+        <!-- STATUS -->
+        <td style="color:${statusColor};font-weight:bold">
+          ${w.status}
         </td>
+
+        <!-- ACTION -->
+        <td>
+          ${
+            w.status === "PENDING"
+            ? `<button 
+                 onclick="approve(${w.id}, this)" 
+                 style="
+                   background:green;
+                   color:#fff;
+                   border:none;
+                   padding:6px 10px;
+                   border-radius:5px;
+                   cursor:pointer;
+               ">
+                 Approve
+               </button>`
+            : `<span style="color:green">✔ Done</span>`
+          }
+        </td>
+
       </tr>
     `;
+
     tbody.innerHTML += row;
   });
 }
 
-async function approve(id) {
-  await fetch("http://localhost:3000/api/admin/withdraw-paid", {
+async function approve(id, btn){
+
+  // 🔒 disable button (prevent double click)
+  btn.disabled = true;
+  btn.innerText = "Processing...";
+
+  await fetch(API + "/api/admin/withdraw-paid", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ id })
   });
 
+  // 🔄 reload
   loadWithdrawals();
 }
 
-loadWithdrawals();
-
-// FUND
 async function addFund(){
-await fetch(API+"/api/admin/add-fund",{method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({member_id:mid.value,amount:amt.value})
-});
-alert("Added");
+
+  const memberId = document.getElementById("mid").value;
+  const amount = document.getElementById("amt").value;
+
+  // ❌ VALIDATION
+  if(!memberId || !amount){
+    alert("Enter Member ID & Amount");
+    return;
+  }
+
+  if(isNaN(amount) || Number(amount) <= 0){
+    alert("Invalid Amount");
+    return;
+  }
+
+  try{
+
+    const res = await fetch(API + "/api/admin/add-fund", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        member_id: memberId,
+        amount: Number(amount)
+      })
+    });
+
+    const data = await res.json();
+
+    if(data.success){
+      alert("✅ Fund Added Successfully");
+
+      // 🔄 clear form
+      document.getElementById("mid").value = "";
+      document.getElementById("amt").value = "";
+
+    }else{
+      alert("❌ Failed to Add Fund");
+    }
+
+  }catch(err){
+    alert("❌ Server Error");
+    console.log(err);
+  }
 }
 
-// CONVERT
 async function convertWallet(){
-await fetch(API+"/api/admin/wallet-to-deposit",{method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({member_id:c_mid.value,amount:c_amt.value})
-});
-alert("Converted");
+
+  const memberId = document.getElementById("c_mid").value;
+  const amount = document.getElementById("c_amt").value;
+
+  // ❌ VALIDATION
+  if(!memberId || !amount){
+    alert("Enter Member ID & Amount");
+    return;
+  }
+
+  if(isNaN(amount) || Number(amount) <= 0){
+    alert("Invalid Amount");
+    return;
+  }
+
+  try{
+
+    const res = await fetch(API + "/api/admin/wallet-to-deposit", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        member_id: memberId,
+        amount: Number(amount)
+      })
+    });
+
+    const data = await res.json();
+
+    if(data.success){
+      alert("✅ Converted Successfully");
+
+      // 🔄 clear form
+      document.getElementById("c_mid").value = "";
+      document.getElementById("c_amt").value = "";
+
+    }else{
+      alert("❌ Conversion Failed");
+    }
+
+  }catch(err){
+    alert("❌ Server Error");
+    console.log(err);
+  }
 }
 
 </script>
