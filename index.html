@@ -7,43 +7,231 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body{font-family:sans-serif;margin:0;display:flex;background:#f4f7f6}
-.sidebar{width:240px;background:#111;color:#fff;padding:20px;height:100vh}
-.sidebar div{padding:12px;cursor:pointer;border-radius:5px}
-.sidebar div:hover{background:#333}
-.main{flex:1;padding:20px}
-.section{display:none;background:#fff;padding:20px;border-radius:10px}
-.active{display:block}
-table{width:100%;border-collapse:collapse}
-th,td{padding:8px;border-bottom:1px solid #eee}
-th{background:#222;color:#fff}
+body{
+  font-family:sans-serif;
+  margin:0;
+  display:flex;
+  background:#f4f7f6;
+}
+
+/* 🔥 SIDEBAR */
+.sidebar{
+  width:240px;
+  background:#111;
+  color:#fff;
+  padding:20px;
+  height:100vh;
+}
+
+.menu{
+  padding:12px;
+  cursor:pointer;
+  border-radius:5px;
+  margin-bottom:5px;
+  transition:0.2s;
+}
+
+.menu:hover{
+  background:#333;
+}
+
+.menu.active{
+  background:#00c853;
+  color:#fff;
+  font-weight:bold;
+}
+
+/* 🔥 MAIN */
+.main{
+  flex:1;
+  padding:20px;
+}
+
+/* 🔥 SECTION CARD */
+.section{
+  display:none;
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.05);
+}
+
+.active{
+  display:block;
+}
+
+/* 🔥 TABLE */
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+
+th,td{
+  padding:10px;
+  border-bottom:1px solid #eee;
+  text-align:left;
+}
+
+th{
+  background:#222;
+  color:#fff;
+}
+
+/* 🔥 BUTTON */
+button{
+  padding:6px 10px;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+
+button:hover{
+  opacity:0.9;
+}
+
+/* 🔥 INPUT */
+input{
+  padding:8px;
+  margin:5px 0;
+  width:200px;
+  border:1px solid #ccc;
+  border-radius:5px;
+}
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:20px;
+}
+
+.header-right{
+  display:flex;
+  gap:10px;
+  align-items:center;
+    }  
+.cards{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:15px;
+  margin-bottom:20px;
+}
+
+.card-box{
+  background:#fff;
+  padding:15px;
+  border-radius:10px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.05);
+}
+
+.card-box h4{
+  margin:0;
+  color:#777;
+}
+
+.card-box p{
+  font-size:20px;
+  font-weight:bold;
+  margin:5px 0 0;
+      }
+
+body.dark{
+  background:#121212;
+  color:#fff;
+}
+
+body.dark .section,
+body.dark .card-box{
+  background:#1e1e1e;
+  color:#fff;
+}
+
+body.dark th{
+  background:#333;
+}
+
+body.dark .sidebar{
+  background:#000;
+    }    
+     
 </style>
 </head>
 
 <body>
 
 <div class="sidebar">
-<div onclick="show('members')">👥 Members</div>
-<div onclick="show('deposit')">📅 Daily Deposits</div>
-<div onclick="show('payout')">💸 Daily Payout</div>
-<div onclick="show('fourx')">🔥 4X Users</div>
-<div onclick="show('unlock')">🔓 Unlock Users</div>
-<div onclick="show('growth')">📈 Growth</div>
-<div onclick="show('withdraw')">🏧 Withdraw</div>
-<div onclick="show('fund')">💰 Add Fund</div>
-<div onclick="show('convert')">🔁 Wallet→Deposit</div>
+
+<div class="menu active" onclick="show('members', this)">👥 Members</div>
+<div class="menu" onclick="show('deposit', this)">📅 Daily Deposits</div>
+<div class="menu" onclick="show('payout', this)">💸 Daily Payout</div>
+<div class="menu" onclick="show('fourx', this)">🔥 4X Users</div>
+<div class="menu" onclick="show('unlock', this)">🔓 Unlock Users</div>
+<div class="menu" onclick="show('growth', this)">📈 Growth</div>
+<div class="menu" onclick="show('withdraw', this)">🏧 Withdraw</div>
+<div class="menu" onclick="show('fund', this)">💰 Add Fund</div>
+<div class="menu" onclick="show('convert', this)">🔁 Wallet→Deposit</div>
+
 </div>
 
+<!-- ✅ EVERYTHING INSIDE MAIN -->
 <div class="main">
 
-<div id="members" class="section active">
-<h3>Members</h3>
+  <!-- 🔥 HEADER -->
+  <div class="header">
 
-<!-- ✅ ADD HERE -->
-<input id="search" placeholder="Search Member..." onkeyup="filterMembers()" style="margin-bottom:10px;padding:8px;width:250px">
+    <h2>Admin Panel</h2>
 
-<table id="memberTable"></table>
-</div>
+    <div class="header-right">
+      <span id="adminName">👤 Admin</span>
+
+      <!-- 📥 EXPORT -->
+      <button onclick="exportTable()">📥 Export</button>
+
+      <!-- 🌙 DARK -->
+      <button onclick="toggleDark()">🌙</button>
+
+      <!-- 🔐 LOGOUT -->
+      <button onclick="logout()">🔐 Logout</button>
+    </div>
+
+  </div>
+
+  <!-- 🔥 CARDS -->
+  <div class="cards">
+
+    <div class="card-box">
+      <h4>Total Users</h4>
+      <p id="totalUsers">0</p>
+    </div>
+
+    <div class="card-box">
+      <h4>Total Deposit</h4>
+      <p id="totalDeposit">₹0</p>
+    </div>
+
+    <div class="card-box">
+      <h4>Total Withdraw</h4>
+      <p id="totalWithdraw">₹0</p>
+    </div>
+
+    <div class="card-box">
+      <h4>Today Income</h4>
+      <p id="todayIncome">₹0</p>
+    </div>
+
+  </div>
+
+  <!-- 🔥 MEMBERS -->
+  <div id="members" class="section active">
+    <h3>Members</h3>
+
+    <input id="search" placeholder="Search Member..." 
+    onkeyup="filterMembers()" 
+    style="margin-bottom:10px;padding:8px;width:250px">
+
+    <table id="memberTable"></table>
+  </div>
 
 <div id="deposit" class="section">
 <h3>Daily Deposits</h3>
@@ -116,14 +304,23 @@ function money(x){
 }
 
 // ================= NAVIGATION =================
-function show(id){
+function show(id, el){
+
   current = id;
 
+  // 🔥 section switch
   document.querySelectorAll('.section').forEach(s=>{
     s.classList.remove('active');
   });
 
   document.getElementById(id).classList.add('active');
+
+  // 🔥 sidebar active highlight
+  document.querySelectorAll('.menu').forEach(m=>{
+    m.classList.remove('active');
+  });
+
+  el.classList.add('active');
 
   refresh();
 }
@@ -131,30 +328,58 @@ function show(id){
 // ================= AUTO REFRESH =================
 function refresh(){
 
+  // 🔥 STATS (TOP CARDS)
+  loadStats();
+
+  // 🔥 SECTION DATA
   if(current==="members") loadMembers();
   if(current==="deposit") loadDeposits();
   if(current==="payout") loadPayout();
   if(current==="fourx") load4x();
   if(current==="unlock") loadUnlock();
   if(current==="growth") loadGrowth();
-
-  // ✅ FIXED LINE
   if(current==="withdraw") loadWithdrawals();
 }
 
 // 🔄 AUTO REFRESH EVERY 20s
 setInterval(refresh,20000);
 
-// ✅ ADD FILTER FUNCTION HERE
+// 🔥 FIRST LOAD
+refresh();
+
+
+// ================= MEMBER SEARCH =================
 function filterMembers(){
+
   const input = document.getElementById("search").value.toLowerCase();
   const rows = document.querySelectorAll("#memberTable tr");
 
   rows.forEach((row, index)=>{
     if(index === 0) return;
+
     const text = row.innerText.toLowerCase();
     row.style.display = text.includes(input) ? "" : "none";
   });
+}
+
+
+// ================= STATS =================
+async function loadStats(){
+
+  try{
+
+    const res = await fetch(API + "/api/admin/stats");
+    const d = await res.json();
+
+    document.getElementById("totalUsers").innerText = d.users || 0;
+    document.getElementById("totalDeposit").innerText = money(d.deposit);
+    document.getElementById("totalWithdraw").innerText = money(d.withdraw);
+    document.getElementById("todayIncome").innerText = money(d.today);
+
+  }catch(err){
+    console.log("Stats error", err);
+  }
+
 }
 
 async function loadMembers(){
@@ -687,6 +912,65 @@ async function convertWallet(){
     console.log(err);
   }
 }
+
+function logout(){
+
+  if(!confirm("Logout?")) return;
+
+  localStorage.removeItem("admin");
+
+  // redirect
+  window.location.href = "login.html";
+          }  
+
+ function toggleDark(){
+
+  document.body.classList.toggle("dark");
+
+  // save mode
+  if(document.body.classList.contains("dark")){
+    localStorage.setItem("theme","dark");
+  }else{
+    localStorage.setItem("theme","light");
+  }
+}
+
+// load saved theme
+if(localStorage.getItem("theme")==="dark"){
+  document.body.classList.add("dark");
+}   
+
+function exportTable(){
+
+  let table = document.querySelector("table").outerHTML;
+
+  let blob = new Blob([table], { type: "application/vnd.ms-excel" });
+
+  let link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "report.xls";
+  link.click();
+}   
+
+let lastDeposit = 0;
+
+async function checkNotifications(){
+
+  const res = await fetch(API + "/api/admin/daily-deposits");
+  const data = await res.json();
+
+  if(data.length > lastDeposit){
+
+    const latest = data[0];
+
+    alert("🔔 New Deposit: ₹" + latest.amount + " (" + latest.member_id + ")");
+
+    lastDeposit = data.length;
+  }
+}
+
+// 🔄 every 10 sec
+setInterval(checkNotifications,10000);    
 
 </script>
 
